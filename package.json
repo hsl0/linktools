@@ -1,0 +1,17 @@
+{
+  "name": "linktools",
+  "version": "0.1.0",
+  "description": "",
+  "main": "dist/LinkTools.js",
+  "types": "dist/LinkTools.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc && tsc -p actions/tsconfig.json && require-self"
+  },
+  "author": "hsl0",
+  "license": "CC-BY-NC-SA-4.0",
+  "devDependencies": {
+    "@types/libertygame": "github:hsl0/libertygame-types",
+    "require-self": "^0.2.3"
+  }
+}
