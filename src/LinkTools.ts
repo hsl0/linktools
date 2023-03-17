@@ -255,24 +255,6 @@ export namespace linkCreater {
     }
 }
 
-interface CommonActionOption {
-    target: string;
-    listener?: [string, ...unknown[]][] | Action;
-    handler?: [string, ...unknown[]][] | Action;
-
-    once: boolean;
-    defer: boolean;
-    await: boolean;
-}
-
-interface ListenerOption extends CommonActionOption {
-    listener: [string, ...unknown[]][] | Action;
-}
-
-interface HandlerOption extends CommonActionOption {
-    handler: [string, ...unknown[]][] | Action;
-}
-
 /**
  * Strip prefix from camelCase names.
  * @param prefix Prefix to strip from name

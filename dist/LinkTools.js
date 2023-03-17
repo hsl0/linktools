@@ -221,18 +221,6 @@ var linkCreater;
     }
     linkCreater.createDummy = createDummy;
 })(linkCreater = exports.linkCreater || (exports.linkCreater = {}));
-function getConfig(element) {
-    if (element.classList.contains('event-listener') ||
-        element.classList.contains('event-handler'))
-        return {
-            target: element.dataset.target,
-            listener: parseJSON(element.dataset.listener),
-            handler: parseJSON(element.dataset.handler),
-            once: 'once' in element.dataset,
-            defer: 'defer' in element.dataset,
-            await: 'await' in element.dataset,
-        };
-}
 /**
  * Strip prefix from camelCase names.
  * @param prefix Prefix to strip from name
