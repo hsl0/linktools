@@ -13,42 +13,23 @@ type LinkModifier = (
     caller: HTMLElement
 ) => unknown | PromiseLike<unknown>;
 
-type LinkModifierMap = Map<
-    HTMLElements<HTMLAnchorElement>,
-    Set<(link: HTMLAnchorElement) => void>
->;
-
 /**
  * @callback Action
  * @param event Event object for control and view details
  * @param args Arguments that passed into the action
  */
-type Action = (
-    event: Event | JQuery.Event,
-    ...args: unknown[]
-) => unknown | PromiseLike<unknown>;
-
-interface AsyncEvent<T> extends JQuery.Event {
-    pending?: boolean;
-    fulfilled?: boolean;
-    rejected?: boolean;
-    settled?: boolean;
-    promise?: PromiseLike<T>;
-}
+type Action = (event: Event, ...args: unknown[]) => unknown | PromiseLike<unknown>;
 
 function parseJSON(
-    json: string,
+    json: string | unknown,
     reviver?: (this: any, key: string, value: any) => any
 ) {
     try {
-        return JSON.parse(json, reviver);
+        return JSON.parse(json as string, reviver);
     } catch (error) {
         if (!(error instanceof SyntaxError)) throw error;
     }
 }
-
-const RESERVED_BEFORE = Symbol('modifiers reserved before');
-const RESERVED_AFTER = Symbol('modifiers reserved after');
 
 /** Stores link modifiers */
 export class LinkModifierCollection {
@@ -57,12 +38,6 @@ export class LinkModifierCollection {
 
     /** Named modifier storage */
     private modifiers: Record<string, LinkModifier> = {};
-
-    /** Pre-modifier storage */
-    private [RESERVED_BEFORE]: LinkModifierMap = new Map();
-
-    /** Post-modifier storage */
-    private [RESERVED_AFTER]: LinkModifierMap = new Map();
 
     /**
      * Construct LinkModifierCollection
@@ -169,26 +144,15 @@ export class LinkModifierCollection {
     }
 
     /**
-     * Apply the collection's modifiers to child elements which its modifiers are defined
+     * Mount the collection's modifiers to child elements which its modifiers are defined
      * @param element Target parent element
      */
-    apply(element: HTMLElements): PromiseLike<unknown> {
+    mount(element: HTMLElements): PromiseLike<unknown> {
         const collection = this;
         let globalPromise: PromiseLike<unknown> = Promise.resolve();
         const localPromises: PromiseLike<unknown>[] = [];
 
         if (this.fired) return globalPromise;
-
-        // Pre-modifiers
-        this[RESERVED_BEFORE].forEach((modifiers, element) =>
-            $<HTMLAnchorElement>(element as any)
-                .filter('a')
-                .each(function () {
-                    modifiers.forEach((modifier) => {
-                        globalPromise = globalPromise.then(() => modifier(this));
-                    });
-                })
-        );
 
         // Named modifiers
         $('.link-modifier-cloak').addClass('link-modifier');
@@ -228,117 +192,9 @@ export class LinkModifierCollection {
 
         globalPromise = globalPromise.then(() => Promise.allSettled(localPromises));
 
-        // After-modifiers
-        this[RESERVED_AFTER].forEach((modifiers, element) =>
-            $<HTMLAnchorElement>(element as any)
-                .filter('a')
-                .each(function () {
-                    modifiers.forEach(
-                        (modifier) =>
-                            (globalPromise = globalPromise.then(() =>
-                                modifier(this)
-                            ))
-                    );
-                })
-        );
-
         this.fired = true;
 
         return globalPromise;
-    }
-
-    /**
-     * Add pre link modifier for specific elements that runs before named modifiers run
-     * @param element Target element of modifier
-     * @param modifier Link modifier function
-     */
-    before(
-        element: HTMLElements<HTMLAnchorElement>,
-        modifier: (link: HTMLAnchorElement) => void
-    ): void {
-        const map = this[RESERVED_BEFORE];
-
-        if (typeof modifier === 'function') {
-            if (map.has(element)) map.get(element)?.add(modifier);
-            else
-                map.set(
-                    element,
-                    new Set<(link: HTMLAnchorElement) => void>().add(modifier)
-                );
-        } else throw new TypeError('Modifier is not function');
-    }
-
-    /**
-     * Add after link modifier for specific elements that runs after named modifiers run
-     * @param element Target element of modifier
-     * @param modifier Link modifier function
-     */
-    after(
-        element: HTMLElements<HTMLAnchorElement>,
-        modifier: (link: HTMLAnchorElement) => void
-    ): void {
-        const map = this[RESERVED_AFTER];
-
-        if (typeof modifier === 'function') {
-            if (map.has(element)) map.get(element)?.add(modifier);
-            else
-                map.set(
-                    element,
-                    new Set<(link: HTMLAnchorElement) => void>().add(modifier)
-                );
-        } else throw new TypeError('Modifier is not function');
-    }
-
-    /**
-     * Unregister after link modifier by target element
-     * @param element Target element of modifier
-     */
-    removeBefore(element: HTMLElements<HTMLAnchorElement>): void;
-
-    /**
-     * Unregister after link modifier by modifier function
-     * @param modifier Link modifier function
-     */
-    removeBefore(modifier: (link: HTMLAnchorElement) => void): void;
-
-    removeBefore(x: any) {
-        const map = this[RESERVED_BEFORE];
-
-        if (typeof x === 'function') {
-            // By modifier function
-            const modifier = x;
-            map.forEach((modifiers) => modifiers.delete(modifier));
-        } else {
-            // By target element
-            const element = x;
-            map.delete(element);
-        }
-    }
-
-    /**
-     * Unregister after link modifier by target element
-     * @param element Target element of modifier
-     */
-    removeAfter(element: HTMLElements<HTMLAnchorElement>): void;
-
-    /**
-     * Unregister after link modifier by modifier function
-     * @param modifier Link modifier function
-     */
-    removeAfter(modifier: (link: HTMLAnchorElement) => void): void;
-
-    removeAfter(x: any) {
-        const map = this[RESERVED_AFTER];
-
-        if (typeof x === 'function') {
-            // By modifier function
-            const modifier = x;
-            map.forEach((modifiers) => modifiers.delete(modifier));
-        } else {
-            // By target element
-            const element = x;
-            map.delete(element);
-        }
     }
 
     /**
@@ -401,6 +257,12 @@ export namespace linkCreater {
 
 interface CommonActionOption {
     target: string;
+    listener?: [string, ...unknown[]][] | Action;
+    handler?: [string, ...unknown[]][] | Action;
+
+    once: boolean;
+    defer: boolean;
+    await: boolean;
 }
 
 interface ListenerOption extends CommonActionOption {
@@ -411,40 +273,69 @@ interface HandlerOption extends CommonActionOption {
     handler: [string, ...unknown[]][] | Action;
 }
 
+/**
+ * Strip prefix from camelCase names.
+ * @param prefix Prefix to strip from name
+ * @param name CamelCase name that starts from prefix
+ * @returns Name without prefix
+ */
+function stripCamelCasePrefix(prefix: string, name: string): string {
+    if (name.length < prefix.length)
+        throw new TypeError('Name should contain prefix');
+    return name[prefix.length].toLowerCase() + name.slice(prefix.length + 1);
+}
+
+/**
+ * Set camelCase prefix to name.
+ * @param prefix Prefix to prepend
+ * @param name Name to append
+ * @returns Joined name
+ */
+function setCamelCasePrefix(prefix: string, name: string): string {
+    return prefix + name[0]?.toUpperCase() + name.slice(1);
+}
+
+/** Strip 'on' prefix from camelCase event type name. */
+const stripEventTypePrefix = stripCamelCasePrefix.bind(null, 'on');
+/** Set 'on' camelCase prefix to event type name */
+const setEventTypePrefix = setCamelCasePrefix.bind(null, 'on');
+
+const allowedTypes: Record<string, string> = {
+    click: 'click',
+};
+
+function removeData(element: HTMLElement, key: string) {
+    delete element.dataset[key];
+    element.removeAttribute('data-' + key);
+}
+
 /** Stores action listeners or handlers */
 export class LinkActionCollection {
-    /** Indicate whether any of action has already fired once */
-    fired = false;
+    /** Indicate whether any of action has already mounted once */
+    mounted = false;
 
     /** Named actions storage */
     private actions: Record<string, Action> = {};
 
-    /** Alias selectors storage */
-    private aliases: Map<
-        string | ((parent: HTMLElement) => HTMLElements),
-        | ListenerOption
-        | HandlerOption
-        | ((element: HTMLElement) => ListenerOption | HandlerOption)
-    > = new Map();
-
-    /** Listeners registry of element */
-    private listeners: WeakMap<
-        HTMLElement,
-        Record<string, [string, ...unknown[]][]>
-    > = new WeakMap();
-
-    /** Handlers registry of element */
-    private handlers: WeakMap<
-        HTMLElement,
-        Record<string, [string, ...unknown[]][]>
-    > = new WeakMap();
+    // /** Alias selectors storage */
+    // private aliases: [
+    //     string | ((parent: JQuery<HTMLElement>) => HTMLElements),
+    //     (
+    //         | ListenerOption
+    //         | HandlerOption
+    //         | ((element: HTMLElement) => ListenerOption | HandlerOption)
+    //     )
+    // ][] = [];
 
     /**
      * Construct ActionCollection
      * @param handlers Object of actions that are being added for collection. Key for action name.
      */
     constructor(handlers?: Record<string, Action> | LinkActionCollection) {
-        if (handlers) this.add(handlers);
+        if (handlers) {
+            this.add(handlers);
+            // if (handlers instanceof LinkActionCollection) this.alias(handlers);
+        }
     }
 
     /**
@@ -531,190 +422,187 @@ export class LinkActionCollection {
     }
 
     /**
-     * Unregister named action
+     * Unregister a named action
      * @param name name of action
      */
-    remove(name: string): void {
-        if (name === 'string') delete this.actions[name];
-        else throw new TypeError('Name is not string');
-    }
+    remove(name: string): void;
 
     /**
-     * Register alias selector for listener/handler statically
-     * @param selector alias selector
-     * @param option listener/handler option contains action
+     * Unregister named actions
+     * @param name name of action
      */
-    alias(selector: string, option: ListenerOption | HandlerOption): void;
+    remove(names: string[] | Set<string>): void;
 
-    /**
-     * Register alias selector for listener/handler dynamically
-     * @param selector function that gets parent element and returns elements selected
-     * @param option listener/handler option contains action
-     */
-    alias(
-        selector: (parent: HTMLElement) => HTMLElements,
-        option: ListenerOption | HandlerOption
-    ): void;
-
-    /**
-     * Register alias selector for listener/handler dynamically
-     * @param selector alias selector
-     * @param option function that gets selected element and returns listener/handler option contains action
-     */
-    alias(
-        selector: string,
-        option: (element: HTMLElement) => ListenerOption | HandlerOption
-    ): void;
-
-    /**
-     * Register alias selector for listener/handler dynamically
-     * @param selector function that gets parent element and returns elements selected
-     * @param option function that gets selected element and returns listener/handler option contains action
-     */
-    alias(
-        selector: (parent: HTMLElement) => HTMLElements,
-        option: (element: HTMLElement) => ListenerOption | HandlerOption
-    ): void;
-
-    alias(selector: any, option: any): void {
-        switch (typeof selector) {
+    remove(name: string | string[] | Set<string>) {
+        switch (typeof name) {
             case 'string':
-            case 'function':
-                switch (typeof option) {
-                    case 'object':
-                    case 'function':
-                        this.aliases.set(selector, option);
-                        break;
-                    default:
-                        throw new TypeError('Option is not object or function');
-                }
+                delete this.actions[name];
+                break;
+            case 'object':
+                if (Array.isArray(name) || name instanceof Set)
+                    name.forEach((name) => this.remove(name));
                 break;
             default:
-                throw new TypeError('Selector is not string or function');
+                throw new TypeError('Name is not string or array');
         }
     }
 
+    // /**
+    //  * Register alias selectors for listener/handler
+    //  * @param aliases LinkActionCollection or alias tuples each contains alias selector or function and listener/handler option or function
+    //  */
+    // alias(
+    //     aliases:
+    //         | [
+    //               string | ((parent: HTMLElement) => HTMLElements),
+    //               (
+    //                   | ListenerOption
+    //                   | HandlerOption
+    //                   | ((element: HTMLElement) => ListenerOption | HandlerOption)
+    //               )
+    //           ][]
+    //         | LinkActionCollection
+    // ): void;
+
+    // /**
+    //  * Register alias selector for listener/handler
+    //  * @param selector alias selector or function that gets parent element and returns elements selected
+    //  * @param option listener/handler option contains action or function that gets selected element and returns listener/handler option
+    //  */
+    // alias(
+    //     selector: string | ((parent: JQuery<HTMLElement>) => HTMLElements),
+    //     option:
+    //         | ListenerOption
+    //         | HandlerOption
+    //         | ((element: HTMLElement) => ListenerOption | HandlerOption)
+    // ): void;
+
+    // alias(selector: any, option?: any): void {
+    //     switch (typeof selector) {
+    //         case 'string':
+    //         case 'function':
+    //             switch (typeof option) {
+    //                 case 'object':
+    //                 case 'function':
+    //                     this.aliases.push([selector, option]);
+    //                     break;
+    //                 default:
+    //                     throw new TypeError('Option is not object or function');
+    //             }
+    //             break;
+    //         default:
+    //             if (Array.isArray(selector)) {
+    //                 this.removeAlias(selector);
+    //                 selector.forEach(([selector, option]) =>
+    //                     this.alias(selector, option)
+    //                 );
+    //             } else if (selector instanceof LinkActionCollection) {
+    //                 this.removeAlias(selector.aliases);
+    //                 this.aliases = this.aliases.concat(selector.aliases);
+    //             } else throw new TypeError('Selector is not string or function');
+    //     }
+    // }
+
+    // /**
+    //  * Unregister aliases
+    //  * @param aliases LinkActionCollection or alias tuples each contains alias selector or function and listener/handler option or function
+    //  */
+    // removeAlias(
+    //     aliases:
+    //         | [
+    //               string | ((parent: JQuery<HTMLElement>) => HTMLElements),
+    //               (
+    //                   | ListenerOption
+    //                   | HandlerOption
+    //                   | ((element: HTMLElement) => ListenerOption | HandlerOption)
+    //               )
+    //           ][]
+    //         | LinkActionCollection
+    // ): void;
+
+    // /**
+    //  * Unregister alias
+    //  * @param selector alias selector
+    //  * @param option listener/handler option contains action
+    //  */
+    // removeAlias(
+    //     selector: string | ((parent: JQuery<HTMLElement>) => HTMLElements),
+    //     option:
+    //         | ListenerOption
+    //         | HandlerOption
+    //         | ((element: HTMLElement) => ListenerOption | HandlerOption)
+    // ): void;
+
+    // removeAlias(selector: any, option?: any) {
+    //     if (selector instanceof LinkActionCollection) selector = selector.aliases;
+
+    //     if (Array.isArray(selector))
+    //         return selector.forEach(([selector, option]) =>
+    //             this.removeAlias(selector, option)
+    //         );
+
+    //     if (!(typeof selector === 'string' || typeof selector === 'function'))
+    //         throw new TypeError('Selector is not string or function');
+
+    //     if (!(typeof option === 'object' || typeof option === 'function'))
+    //         throw new TypeError('Option is not object or function');
+
+    //     while (true) {
+    //         const index = this.aliases.findIndex(
+    //             ([sel, opt]) =>
+    //                 sel === selector &&
+    //                 (opt === option ||
+    //                     (typeof opt === 'object' &&
+    //                         typeof option === 'object' &&
+    //                         (opt as ListenerOption).listener ===
+    //                             (option as ListenerOption).listener &&
+    //                         (opt as HandlerOption).handler ===
+    //                             (option as HandlerOption).handler &&
+    //                         opt.target === option.target))
+    //         );
+    //         if (Number.isInteger(index)) this.aliases.splice(index, 1);
+    //         else break;
+    //     }
+    // }
+
     /**
-     * Apply the collection's actions to child elements which its handlers are defined
-     * @param element Target parent element
+     * Mount the collection's actions to child elements which its listeners or handlers are defined
+     * @param parent Target parent element
      */
-    apply(element: HTMLElements): void {
-        if (this.fired) return;
+    mount(parent: HTMLElements): void {
+        if (this.mounted) return;
 
         $('.event-listener-cloak').addClass('event-listener');
         $('.event-handler-cloak').addClass('event-handler');
 
         const collection = this;
-        element = $<HTMLElement>(element as any);
 
-        if (
-            (element as JQuery).is(
-                '.event-listener[data-target="link"], .event-handler[data-target="link"]'
-            )
-        )
-            element = (element as JQuery).find('a');
-        else
-            element = (element as JQuery).find(
-                '.event-listener[data-target="link"] a, .event-handler[data-target="link"] a'
-            );
+        $<HTMLElement>(parent as any)
+            .find('.event-listener a, .event-handler a')
+            .each(function () {
+                const link = this;
+                const eventTypes = new Set<string>();
 
-        (element as JQuery).each(function () {
-            const listeners: Record<string, [string, ...any[]][]> =
-                collection.listeners.get(this) ||
-                collection.listeners.set(this, {}).get(this)!;
-            const handlers: Record<string, [string, ...any[]][]> =
-                collection.listeners.get(this) ||
-                collection.listeners.set(this, {}).get(this)!;
+                $(this)
+                    .parents('.event-listener, .event-handler')
+                    .each(function () {
+                        for (const key in this.dataset) {
+                            // Test if the key has 'on-' prefix.
+                            if (!/^on[A-Z]/.test(key)) continue;
 
-            $(this)
-                .parents('.event-listener[data-target="link"]')
-                .each(function () {
-                    const actions = parseJSON(this.dataset.listener as any);
+                            const type = stripEventTypePrefix(key);
+                            if (!allowedTypes[type]) continue;
 
-                    if (actions)
-                        for (const event in actions) {
-                            listeners[event] = [
-                                ...actions[event],
-                                ...(listeners[event] || []),
-                            ];
+                            eventTypes.add(type);
                         }
-                });
+                    });
 
-            $(this)
-                .parents('.event-handler[data-target="link"]')
-                .get()
-                .reverse()
-                .forEach((handler) => {
-                    const actions = parseJSON(handler.dataset.handler as any);
+                eventTypes.forEach((type) =>
+                    link.addEventListener(type, collection.eventHandler)
+                );
+            });
 
-                    if (actions)
-                        for (const event in actions) {
-                            if (!handlers[event]) handlers[event] = actions[event];
-                        }
-                });
-
-            new Set([...Object.keys(listeners), ...Object.keys(handlers)]).forEach(
-                (eventName) =>
-                    $(this).on(
-                        eventName,
-                        (event: AsyncEvent<unknown>, ...[prev]) => {
-                            // if(!event.isTrusted && prev instanceof Event && prev.defaultPrevented && prev.fulfilled)
-                            if (prev?.isDefaultPrevented() && prev?.fulfilled) {
-                                return;
-                            }
-
-                            event.preventDefault();
-
-                            event.pending = true;
-                            event.settled = false;
-                            event.fulfilled = false;
-                            event.rejected = false;
-
-                            let promise: PromiseLike<unknown> = Promise.resolve();
-
-                            listeners[event.type]?.forEach(([name, ...args]) => {
-                                promise = promise.then(() =>
-                                    collection.execute(name, event, ...args)
-                                );
-                            });
-
-                            if (handlers[event.type])
-                                handlers[event.type]?.forEach(([name, ...args]) => {
-                                    promise = promise.then(() =>
-                                        collection.execute(name, event, ...args)
-                                    );
-                                });
-                            else
-                                (event as AsyncEvent<unknown>).promise =
-                                    promise.then(
-                                        (value) => {
-                                            event.pending = false;
-                                            event.fulfilled = true;
-                                            event.settled = true;
-                                            if (
-                                                event.type === 'click' &&
-                                                //@ts-ignore target exists in JQuery.Event
-                                                (event.target as HTMLAnchorElement)
-                                                    .href
-                                            )
-                                                // prettier-ignore
-                                                //@ts-ignore target exists in JQuery.Event
-                                                location.href = (event.target as HTMLAnchorElement).href;
-                                            return value;
-                                        },
-                                        (error) => {
-                                            event.pending = false;
-                                            event.rejected = true;
-                                            event.settled = true;
-                                            throw error;
-                                        }
-                                    );
-                        }
-                    )
-            );
-        });
-
-        this.fired = true;
+        this.mounted = true;
 
         $('.event-listener-cloak, .event-handler-cloak').removeClass([
             'event-listener-cloak',
@@ -734,10 +622,58 @@ export class LinkActionCollection {
      * Execute action
      * @param event Event object for control and view details
      * @param args Arguments that passed into the action
-
      */
-    execute(name: string, event: Event | JQuery.Event, ...args: unknown[]) {
+    execute(name: string, event: Event, ...args: unknown[]) {
         return this.actions[name](event, ...args);
+    }
+
+    private eventHandler(event: Event) {
+        const collection = this;
+        let queue: PromiseLike<unknown> = Promise.resolve();
+        let awaiting: PromiseLike<unknown> = Promise.resolve();
+        const $parents = $(event.target as HTMLElement).parents(
+            `.event-handler[data-on-${event.type}], .event-listener[data-on-${event.type}]`
+        );
+
+        if (!$parents.length) {
+            (event.target as HTMLElement).removeEventListener(
+                event.type,
+                this.eventHandler
+            );
+            return;
+        }
+
+        $parents.each(function () {
+            let promise = (
+                'defer' in this.dataset ? Promise.all([awaiting, queue]) : awaiting
+            ).then(() =>
+                collection.execute(
+                    'all',
+                    event,
+                    ...parseJSON(this.dataset[setEventTypePrefix(event.type)])
+                )
+            );
+
+            if ('await' in this.dataset)
+                promise.then((promise) => {
+                    awaiting = Promise.all([awaiting, promise]);
+                });
+
+            if ('once' in this.dataset) {
+                for (const key in this.dataset) {
+                    if (!/^on[A-Z]/.test(key)) continue;
+
+                    delete this.dataset[key];
+                    this.removeAttribute('data-on-' + stripEventTypePrefix(key));
+                }
+
+                this.classList.remove('event-listener', 'event-handler');
+
+                removeData(this, 'await');
+                removeData(this, 'defer');
+                removeData(this, 'once');
+            }
+        });
     }
 }
 
@@ -746,6 +682,6 @@ export const linkAction = new LinkActionCollection();
 
 registerRenderer(async () => {
     linkCreater.apply('#mw-content-text');
-    await linkModifier.apply('#mw-content-text');
+    await linkModifier.mount('#mw-content-text');
 });
-registerHandler(() => linkAction.apply('#mw-content-text'));
+registerHandler(() => linkAction.mount('#mw-content-text'));

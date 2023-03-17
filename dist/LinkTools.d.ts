@@ -1,29 +1,22 @@
-/// <reference types="jquery" />
-declare type HTMLElements<Element extends HTMLElement = HTMLElement> = Element | ArrayLike<Element> | string;
+type HTMLElements<Element extends HTMLElement = HTMLElement> = Element | ArrayLike<Element> | string;
 /**
  * @callback LinkModifier
  * @param link Link element (anchor element) object
  * @param caller link-modifier class element that called this modifier
  */
-declare type LinkModifier = (link: HTMLAnchorElement, caller: HTMLElement) => unknown | PromiseLike<unknown>;
+type LinkModifier = (link: HTMLAnchorElement, caller: HTMLElement) => unknown | PromiseLike<unknown>;
 /**
  * @callback Action
  * @param event Event object for control and view details
  * @param args Arguments that passed into the action
  */
-declare type Action = (event: Event | JQuery.Event, ...args: unknown[]) => unknown | PromiseLike<unknown>;
-declare const RESERVED_BEFORE: unique symbol;
-declare const RESERVED_AFTER: unique symbol;
+type Action = (event: Event, ...args: unknown[]) => unknown | PromiseLike<unknown>;
 /** Stores link modifiers */
 export declare class LinkModifierCollection {
     /** Indicate whether any of modifier has already fired once */
     fired: boolean;
     /** Named modifier storage */
     private modifiers;
-    /** Pre-modifier storage */
-    private [RESERVED_BEFORE];
-    /** Post-modifier storage */
-    private [RESERVED_AFTER];
     /**
      * Construct LinkModifierCollection
      * @param modifiers Object of link modifiers that are being added for collection. Key for modifier's name.
@@ -31,9 +24,9 @@ export declare class LinkModifierCollection {
     constructor(modifiers?: Record<string, LinkModifier> | LinkModifierCollection);
     /**
      * Add multiple named link modifier in once
-     * @param modifiers Object of named link modifier. Key for modifier's name.
+     * @param modifiers Object of named link modifier. Key for modifier's name. Value for modifier function or name of alias.
      */
-    add(modifiers: Record<string, LinkModifier> | LinkModifierCollection): void;
+    add(modifiers: Record<string, LinkModifier | string> | LinkModifierCollection): void;
     /**
      * Add a named link modifier
      * @param name Name of link modifier
@@ -41,47 +34,33 @@ export declare class LinkModifierCollection {
      */
     add(name: string, modifier: LinkModifier): void;
     /**
+     * Add a named link modifier
+     * @param names Names of link modifier
+     * @param modifier Link modifier function
+     */
+    add(names: string[] | Set<string>, modifier: LinkModifier): void;
+    /**
+     * Add a alias of named link modifier
+     * @param alias Alias of link modifier
+     * @param modifier Link modifier name
+     */
+    add(alias: string, modifier: string): void;
+    /**
+     * Add aliases of named link modifier
+     * @param aliases Aliases of link modifier
+     * @param modifier Link modifier name
+     */
+    add(aliases: string[] | Set<string>, modifier: string): void;
+    /**
      * Unregister named link modifier
      * @param name Name of link modifier
      */
     remove(name: string): void;
     /**
-     * Apply the collection's modifiers to child elements which its modifiers are defined
+     * Mount the collection's modifiers to child elements which its modifiers are defined
      * @param element Target parent element
      */
-    apply(element: HTMLElements): PromiseLike<unknown>;
-    /**
-     * Add pre link modifier for specific elements that runs before named modifiers run
-     * @param element Target element of modifier
-     * @param modifier Link modifier function
-     */
-    before(element: HTMLElements<HTMLAnchorElement>, modifier: (link: HTMLAnchorElement) => void): void;
-    /**
-     * Add after link modifier for specific elements that runs after named modifiers run
-     * @param element Target element of modifier
-     * @param modifier Link modifier function
-     */
-    after(element: HTMLElements<HTMLAnchorElement>, modifier: (link: HTMLAnchorElement) => void): void;
-    /**
-     * Unregister after link modifier by target element
-     * @param element Target element of modifier
-     */
-    removeBefore(element: HTMLElements<HTMLAnchorElement>): void;
-    /**
-     * Unregister after link modifier by modifier function
-     * @param modifier Link modifier function
-     */
-    removeBefore(modifier: (link: HTMLAnchorElement) => void): void;
-    /**
-     * Unregister after link modifier by target element
-     * @param element Target element of modifier
-     */
-    removeAfter(element: HTMLElements<HTMLAnchorElement>): void;
-    /**
-     * Unregister after link modifier by modifier function
-     * @param modifier Link modifier function
-     */
-    removeAfter(modifier: (link: HTMLAnchorElement) => void): void;
+    mount(element: HTMLElements): PromiseLike<unknown>;
     /**
      * Forks modifiers collection
      * @returns New modifiers collection that contains member modifiers of this collection
@@ -107,8 +86,8 @@ export declare namespace linkCreater {
 }
 /** Stores action listeners or handlers */
 export declare class LinkActionCollection {
-    /** Indicate whether any of action has already fired once */
-    fired: boolean;
+    /** Indicate whether any of action has already mounted once */
+    mounted: boolean;
     /** Named actions storage */
     private actions;
     /**
@@ -118,9 +97,9 @@ export declare class LinkActionCollection {
     constructor(handlers?: Record<string, Action> | LinkActionCollection);
     /**
      * Add multiple named action in once
-     * @param handlers Object of named actions. Key for action's name.
+     * @param actions Object of named actions. Key for action's name. Value for action handler/listener function or name of alias.
      */
-    add(actions: Record<string, Action> | LinkActionCollection): void;
+    add(actions: Record<string, Action | string> | LinkActionCollection): void;
     /**
      * Add a named action
      * @param name Name of action
@@ -128,15 +107,38 @@ export declare class LinkActionCollection {
      */
     add(name: string, action: Action): void;
     /**
-     * Unregister named action
+     * Add a named action
+     * @param names Names of action
+     * @param action Action handler/listener function
+     */
+    add(names: string[] | Set<string>, action: Action): void;
+    /**
+     * Add a alias of named action
+     * @param alias Alias of action
+     * @param action Action name
+     */
+    add(alias: string, action: string): void;
+    /**
+     * Add aliases of named action
+     * @param aliases Aliases of action
+     * @param action Action name
+     */
+    add(aliases: string[] | Set<string>, action: string): void;
+    /**
+     * Unregister a named action
      * @param name name of action
      */
     remove(name: string): void;
     /**
-     * Apply the collection's actions to child elements which its handlers are defined
-     * @param element Target parent element
+     * Unregister named actions
+     * @param name name of action
      */
-    apply(element: HTMLElements): void;
+    remove(names: string[] | Set<string>): void;
+    /**
+     * Mount the collection's actions to child elements which its listeners or handlers are defined
+     * @param parent Target parent element
+     */
+    mount(parent: HTMLElements): void;
     /**
      * Forks actions collection
      * @returns New action collection that contains member actions of this collection
@@ -146,9 +148,9 @@ export declare class LinkActionCollection {
      * Execute action
      * @param event Event object for control and view details
      * @param args Arguments that passed into the action
-
      */
-    execute(name: string, event: Event | JQuery.Event, ...args: unknown[]): unknown;
+    execute(name: string, event: Event, ...args: unknown[]): unknown;
+    private eventHandler;
 }
 export declare const linkModifier: LinkModifierCollection;
 export declare const linkAction: LinkActionCollection;
