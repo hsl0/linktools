@@ -1,17 +1,25 @@
 {
-  "name": "linktools",
-  "version": "0.1.0",
-  "description": "",
-  "main": "dist/LinkTools.js",
-  "types": "dist/LinkTools.d.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc && tsc -p actions/tsconfig.json && require-self"
-  },
-  "author": "hsl0",
-  "license": "CC-BY-NC-SA-4.0",
-  "devDependencies": {
-    "@types/libertygame": "github:hsl0/libertygame-types",
-    "require-self": "^0.2.3"
-  }
+    "name": "linktools",
+    "version": "0.1.0",
+    "description": "",
+    "main": "dist/LinkTools.js",
+    "types": "dist/LinkTools.d.ts",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "eslint . --fix && npm run compile && prettier && require-self",
+        "clean": "eslint . --fix && prettier",
+        "compile": "tsc",
+        "check": "eslint . & tsc --noEmit"
+    },
+    "author": "hsl0",
+    "license": "CC-BY-NC-SA-4.0",
+    "devDependencies": {
+        "@types/libertygame": "github:hsl0/libertygame-types",
+        "@typescript-eslint/eslint-plugin": "^5.56.0",
+        "@typescript-eslint/parser": "^5.56.0",
+        "eslint": "^8.36.0",
+        "prettier": "^2.8.6",
+        "require-self": "^0.2.3",
+        "typescript": "^5.0.2"
+    }
 }

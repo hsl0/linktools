@@ -6,24 +6,17 @@
         "noImplicitAny": true,
         "noImplicitReturns": true,
         "noImplicitThis": true,
+        "noImplicitOverride": true,
         "newLine": "lf",
         "target": "ES5",
         "forceConsistentCasingInFileNames": true,
         "outDir": "dist",
-        "strictBindCallApply": true,
-        "strictFunctionTypes": true,
-        "strictNullChecks": true,
         "alwaysStrict": true,
         "sourceMap": true,
         "module": "CommonJS",
         "declaration": true,
-        "lib": [
-            "DOM",
-            "ES2020"
-        ],
+        "lib": ["DOM", "ES2021"],
         "rootDir": "src"
     },
-    "include": [
-        "src/**/*"
-    ]
+    "include": ["src/**/*"]
 }
