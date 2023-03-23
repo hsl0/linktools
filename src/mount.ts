@@ -5,6 +5,8 @@ import LinkActionCollection from './eventtools';
 export const linkModifier = new LinkModifierCollection();
 export const linkAction = new LinkActionCollection();
 
+/// <reference types='libertygame-types'/>
+
 registerRenderer(async () => {
     mountLinkSlot('#mw-content-text');
     await linkModifier.mount('#mw-content-text');
