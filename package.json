@@ -14,7 +14,6 @@
     "author": "hsl0",
     "license": "CC-BY-NC-SA-4.0",
     "devDependencies": {
-        "@types/libertygame": "github:hsl0/libertygame-types#next",
         "@typescript-eslint/eslint-plugin": "^5.56.0",
         "@typescript-eslint/parser": "^5.56.0",
         "eslint": "^8.36.0",
