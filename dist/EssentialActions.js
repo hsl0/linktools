@@ -13,7 +13,7 @@ var __spreadArray =
     };
 Object.defineProperty(exports, '__esModule', { value: true });
 var mount_1 = require('./mount');
-mount_1.linkAction.add('all', function (event) {
+mount_1.linkAction.register('all', function (event) {
     var args = [];
     for (var _i = 1; _i < arguments.length; _i++) {
         args[_i - 1] = arguments[_i];
@@ -29,7 +29,7 @@ mount_1.linkAction.add('all', function (event) {
         })
     );
 });
-mount_1.linkAction.add('race', function (event) {
+mount_1.linkAction.register('race', function (event) {
     var args = [];
     for (var _i = 1; _i < arguments.length; _i++) {
         args[_i - 1] = arguments[_i];
@@ -45,7 +45,7 @@ mount_1.linkAction.add('race', function (event) {
         })
     );
 });
-mount_1.linkAction.add('allSettled', function (event) {
+mount_1.linkAction.register('allSettled', function (event) {
     var args = [];
     for (var _i = 1; _i < arguments.length; _i++) {
         args[_i - 1] = arguments[_i];
@@ -61,7 +61,7 @@ mount_1.linkAction.add('allSettled', function (event) {
         })
     );
 });
-mount_1.linkAction.add('any', function (event) {
+mount_1.linkAction.register('any', function (event) {
     var args = [];
     for (var _i = 1; _i < arguments.length; _i++) {
         args[_i - 1] = arguments[_i];
@@ -78,5 +78,5 @@ mount_1.linkAction.add('any', function (event) {
     );
 });
 // eslint-disable-next-line @typescript-eslint/no-empty-function
-mount_1.linkAction.add('void', function () {});
+mount_1.linkAction.register('void', function () {});
 //# sourceMappingURL=EssentialActions.js.map

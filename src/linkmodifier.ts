@@ -23,14 +23,14 @@ export default class LinkModifierCollection {
     constructor(
         modifiers?: Record<string, LinkModifier> | LinkModifierCollection
     ) {
-        if (modifiers) this.add(modifiers);
+        if (modifiers) this.register(modifiers);
     }
 
     /**
      * Add multiple named link modifier in once
      * @param modifiers Object of named link modifier. Key for modifier's name. Value for modifier function or name of alias.
      */
-    add(
+    register(
         modifiers:
             | Record<string, LinkModifier | string>
             | LinkModifierCollection
@@ -43,30 +43,30 @@ export default class LinkModifierCollection {
      * @param name Name of link modifier
      * @param modifier Link modifier function
      */
-    add(name: string, modifier: LinkModifier): void;
+    register(name: string, modifier: LinkModifier): void;
 
     /**
      * Add a named link modifier
      * @param names Names of link modifier
      * @param modifier Link modifier function
      */
-    add(names: string[] | Set<string>, modifier: LinkModifier): void;
+    register(names: string[] | Set<string>, modifier: LinkModifier): void;
 
     /**
      * Add a alias of named link modifier
      * @param alias Alias of link modifier
      * @param modifier Link modifier name
      */
-    add(alias: string, modifier: string): void;
+    register(alias: string, modifier: string): void;
 
     /**
      * Add aliases of named link modifier
      * @param aliases Aliases of link modifier
      * @param modifier Link modifier name
      */
-    add(aliases: string[] | Set<string>, modifier: string): void;
+    register(aliases: string[] | Set<string>, modifier: string): void;
 
-    add(
+    register(
         a:
             | string
             | string[]
@@ -78,6 +78,16 @@ export default class LinkModifierCollection {
         switch (typeof a) {
             case 'string':
                 // name = a;
+                if (this.modifiers[a]) {
+                    this.modifiers[a] = () => {
+                        throw new Error(
+                            `링크 수정자 '${a}'이(가) 중복으로 등록되었습니다`
+                        );
+                    };
+                    throw new TypeError(
+                        `Link modifier '${a}' is already defined`
+                    );
+                }
                 switch (typeof b) {
                     case 'function':
                         // Single modifier
@@ -106,7 +116,7 @@ export default class LinkModifierCollection {
                         case 'function':
                         case 'string':
                             //@ts-ignore Valid union overload
-                            a.forEach((name: string) => this.add(name, b));
+                            a.forEach((name: string) => this.register(name, b));
                             break;
                         default:
                             throw new TypeError(
@@ -115,7 +125,7 @@ export default class LinkModifierCollection {
                     }
                 // Multiple modifiers
                 //@ts-ignore Valid union overload
-                else for (const name in a) this.add(name, a[name]);
+                else for (const name in a) this.register(name, a[name]);
                 break;
             default:
                 throw TypeError(
@@ -124,14 +134,14 @@ export default class LinkModifierCollection {
         }
     }
 
-    /**
-     * Unregister named link modifier
-     * @param name Name of link modifier
-     */
-    remove(name: string): void {
-        if (name === 'string') delete this.modifiers[name];
-        else throw new TypeError('Name is not string');
-    }
+    // /**
+    //  * Unregister named link modifier
+    //  * @param name Name of link modifier
+    //  */
+    // remove(name: string): void {
+    //     if (name === 'string') delete this.modifiers[name];
+    //     else throw new TypeError('Name is not string');
+    // }
 
     /**
      * Mount the collection's modifiers to child elements which its modifiers are defined
@@ -206,10 +216,15 @@ export default class LinkModifierCollection {
 
                     localPromise = localPromise
                         .then(() => collection.modifiers[name](link, this))
-                        .then(() => {
-                            this.classList.remove('link-modifier-cloak');
-                            this.classList.add('link-modified');
-                        });
+                        .then(
+                            () => {
+                                this.classList.remove('link-modifier-cloak');
+                                this.classList.add('link-modified');
+                            },
+                            (error: Error) => {
+                                printError(this, error.toString());
+                            }
+                        );
                 });
 
             localPromises.push(localPromise);

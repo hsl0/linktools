@@ -3,18 +3,18 @@ function require(name) {
 }
 const { linkModifier, linkAction } = require('linktools');
 
-linkModifier.add('a', (link) => {
+linkModifier.register('a', (link) => {
     link.hash += 'a';
 });
-linkModifier.add('b', (link) => {
+linkModifier.register('b', (link) => {
     link.hash += 'b';
 });
 
-linkAction.add('a', () => {
+linkAction.register('a', () => {
     // eslint-disable-next-line no-undef
     return OO.ui.alert('a');
 });
-linkAction.add('b', () => {
+linkAction.register('b', () => {
     // eslint-disable-next-line no-undef
     return OO.ui.alert('b');
 });

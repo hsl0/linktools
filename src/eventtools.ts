@@ -85,7 +85,9 @@ function parseEventDeclaration(str: string): EventDeclaration {
     [obj.action, ...obj.arguments] = JSON.parse(str); // JSON 파싱 시도
 
     if (typeof obj.action !== 'string')
-        throw new TypeError('마지막에 첫번째 값이 문자열인 배열이 오지 않았음');
+        throw new SyntaxError(
+            '마지막에 첫번째 값이 문자열인 배열이 오지 않았음'
+        );
 
     return obj as EventDeclaration;
 }
@@ -116,7 +118,7 @@ export default class LinkActionCollection {
      */
     constructor(handlers?: Record<string, Action> | LinkActionCollection) {
         if (handlers) {
-            this.add(handlers);
+            this.register(handlers);
             // if (handlers instanceof LinkActionCollection) this.alias(handlers);
         }
         this.eventHandler = this.eventHandler.bind(this);
@@ -126,7 +128,9 @@ export default class LinkActionCollection {
      * Add multiple named action in once
      * @param actions Object of named actions. Key for action's name. Value for action handler/listener function or name of alias.
      */
-    add(actions: Record<string, Action | string> | LinkActionCollection): void;
+    register(
+        actions: Record<string, Action | string> | LinkActionCollection
+    ): void;
 
     //add(handlers: HTMLElements): void;
 
@@ -135,30 +139,30 @@ export default class LinkActionCollection {
      * @param name Name of action
      * @param action Action handler/listener function
      */
-    add(name: string, action: Action): void;
+    register(name: string, action: Action): void;
 
     /**
      * Add a named action
      * @param names Names of action
      * @param action Action handler/listener function
      */
-    add(names: string[] | Set<string>, action: Action): void;
+    register(names: string[] | Set<string>, action: Action): void;
 
     /**
      * Add a alias of named action
      * @param alias Alias of action
      * @param action Action name
      */
-    add(alias: string, action: string): void;
+    register(alias: string, action: string): void;
 
     /**
      * Add aliases of named action
      * @param aliases Aliases of action
      * @param action Action name
      */
-    add(aliases: string[] | Set<string>, action: string): void;
+    register(aliases: string[] | Set<string>, action: string): void;
 
-    add(
+    register(
         a:
             | string
             | string[]
@@ -170,6 +174,14 @@ export default class LinkActionCollection {
         switch (typeof a) {
             case 'string':
                 // name = a
+                if (this.actions[a]) {
+                    this.actions[a] = () => {
+                        throw new Error(
+                            `동작 '${a}'이(가) 중복으로 등록되었습니다`
+                        );
+                    };
+                    throw new TypeError(`Action '${a} is already defined'`);
+                }
                 switch (typeof b) {
                     case 'function':
                         // Single action
@@ -200,7 +212,7 @@ export default class LinkActionCollection {
                         case 'function':
                         case 'string':
                             //@ts-ignore Valid union overload
-                            a.forEach((name: string) => this.add(name, b));
+                            a.forEach((name: string) => this.register(name, b));
                             break;
                         default:
                             throw new TypeError(
@@ -208,7 +220,7 @@ export default class LinkActionCollection {
                             );
                     }
                 //@ts-ignore Valid union overload
-                else for (const name in a) this.add(name, a[name]);
+                else for (const name in a) this.register(name, a[name]);
                 break;
             default:
                 throw TypeError(
@@ -217,31 +229,31 @@ export default class LinkActionCollection {
         }
     }
 
-    /**
-     * Unregister a named action
-     * @param name name of action
-     */
-    remove(name: string): void;
+    // /**
+    //  * Unregister a named action
+    //  * @param name name of action
+    //  */
+    // remove(name: string): void;
 
-    /**
-     * Unregister named actions
-     * @param name name of action
-     */
-    remove(names: string[] | Set<string>): void;
+    // /**
+    //  * Unregister named actions
+    //  * @param name name of action
+    //  */
+    // remove(names: string[] | Set<string>): void;
 
-    remove(name: string | string[] | Set<string>) {
-        switch (typeof name) {
-            case 'string':
-                delete this.actions[name];
-                break;
-            case 'object':
-                if (Array.isArray(name) || name instanceof Set)
-                    name.forEach((name) => this.remove(name));
-                break;
-            default:
-                throw new TypeError('Name is not string or array');
-        }
-    }
+    // remove(name: string | string[] | Set<string>) {
+    //     switch (typeof name) {
+    //         case 'string':
+    //             delete this.actions[name];
+    //             break;
+    //         case 'object':
+    //             if (Array.isArray(name) || name instanceof Set)
+    //                 name.forEach((name) => this.remove(name));
+    //             break;
+    //         default:
+    //             throw new TypeError('Name is not string or array');
+    //     }
+    // }
 
     // /**
     //  * Register alias selectors for listener/handler

@@ -68,7 +68,9 @@ function parseEventDeclaration(str) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     (_a = JSON.parse(str)), (obj.action = _a[0]), (obj.arguments = _a.slice(1)); // JSON 파싱 시도
     if (typeof obj.action !== 'string')
-        throw new TypeError('마지막에 첫번째 값이 문자열인 배열이 오지 않았음');
+        throw new SyntaxError(
+            '마지막에 첫번째 값이 문자열인 배열이 오지 않았음'
+        );
     return obj;
 }
 /** Allowed event types and mapping from virtual name to actual name */
@@ -94,16 +96,29 @@ var LinkActionCollection = /** @class */ (function () {
         /** Named actions storage */
         this.actions = {};
         if (handlers) {
-            this.add(handlers);
+            this.register(handlers);
             // if (handlers instanceof LinkActionCollection) this.alias(handlers);
         }
         this.eventHandler = this.eventHandler.bind(this);
     }
-    LinkActionCollection.prototype.add = function (a, b) {
+    LinkActionCollection.prototype.register = function (a, b) {
         var _this = this;
         switch (typeof a) {
             case 'string':
                 // name = a
+                if (this.actions[a]) {
+                    this.actions[a] = function () {
+                        throw new Error(
+                            "\uB3D9\uC791 '".concat(
+                                a,
+                                "'\uC774(\uAC00) \uC911\uBCF5\uC73C\uB85C \uB4F1\uB85D\uB418\uC5C8\uC2B5\uB2C8\uB2E4"
+                            )
+                        );
+                    };
+                    throw new TypeError(
+                        "Action '".concat(a, " is already defined'")
+                    );
+                }
                 switch (typeof b) {
                     case 'function':
                         // Single action
@@ -135,7 +150,7 @@ var LinkActionCollection = /** @class */ (function () {
                         case 'string':
                             //@ts-ignore Valid union overload
                             a.forEach(function (name) {
-                                return _this.add(name, b);
+                                return _this.register(name, b);
                             });
                             break;
                         default:
@@ -144,7 +159,7 @@ var LinkActionCollection = /** @class */ (function () {
                             );
                     }
                 //@ts-ignore Valid union overload
-                else for (var name_1 in a) this.add(name_1, a[name_1]);
+                else for (var name_1 in a) this.register(name_1, a[name_1]);
                 break;
             default:
                 throw TypeError(
@@ -152,22 +167,29 @@ var LinkActionCollection = /** @class */ (function () {
                 );
         }
     };
-    LinkActionCollection.prototype.remove = function (name) {
-        var _this = this;
-        switch (typeof name) {
-            case 'string':
-                delete this.actions[name];
-                break;
-            case 'object':
-                if (Array.isArray(name) || name instanceof Set)
-                    name.forEach(function (name) {
-                        return _this.remove(name);
-                    });
-                break;
-            default:
-                throw new TypeError('Name is not string or array');
-        }
-    };
+    // /**
+    //  * Unregister a named action
+    //  * @param name name of action
+    //  */
+    // remove(name: string): void;
+    // /**
+    //  * Unregister named actions
+    //  * @param name name of action
+    //  */
+    // remove(names: string[] | Set<string>): void;
+    // remove(name: string | string[] | Set<string>) {
+    //     switch (typeof name) {
+    //         case 'string':
+    //             delete this.actions[name];
+    //             break;
+    //         case 'object':
+    //             if (Array.isArray(name) || name instanceof Set)
+    //                 name.forEach((name) => this.remove(name));
+    //             break;
+    //         default:
+    //             throw new TypeError('Name is not string or array');
+    //     }
+    // }
     // /**
     //  * Register alias selectors for listener/handler
     //  * @param aliases LinkActionCollection or alias tuples each contains alias selector or function and listener/handler option or function

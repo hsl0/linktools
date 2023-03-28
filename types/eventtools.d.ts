@@ -21,41 +21,33 @@ export default class LinkActionCollection {
      * Add multiple named action in once
      * @param actions Object of named actions. Key for action's name. Value for action handler/listener function or name of alias.
      */
-    add(actions: Record<string, Action | string> | LinkActionCollection): void;
+    register(
+        actions: Record<string, Action | string> | LinkActionCollection
+    ): void;
     /**
      * Add a named action
      * @param name Name of action
      * @param action Action handler/listener function
      */
-    add(name: string, action: Action): void;
+    register(name: string, action: Action): void;
     /**
      * Add a named action
      * @param names Names of action
      * @param action Action handler/listener function
      */
-    add(names: string[] | Set<string>, action: Action): void;
+    register(names: string[] | Set<string>, action: Action): void;
     /**
      * Add a alias of named action
      * @param alias Alias of action
      * @param action Action name
      */
-    add(alias: string, action: string): void;
+    register(alias: string, action: string): void;
     /**
      * Add aliases of named action
      * @param aliases Aliases of action
      * @param action Action name
      */
-    add(aliases: string[] | Set<string>, action: string): void;
-    /**
-     * Unregister a named action
-     * @param name name of action
-     */
-    remove(name: string): void;
-    /**
-     * Unregister named actions
-     * @param name name of action
-     */
-    remove(names: string[] | Set<string>): void;
+    register(aliases: string[] | Set<string>, action: string): void;
     /**
      * Mount the collection's actions to child elements which its listeners or handlers are defined
      * @param parent Target parent element
@@ -84,3 +76,4 @@ export default class LinkActionCollection {
     private eventHandler;
 }
 export {};
+//# sourceMappingURL=eventtools.d.ts.map

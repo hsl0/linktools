@@ -9,7 +9,7 @@
         "es6": true,
         "jquery": true
     },
-    "ignorePatterns": ["dist/**/*"],
+    "ignorePatterns": ["dist/**/*", "types/**/*"],
     "overrides": [
         {
             "files": ["*.ts"],

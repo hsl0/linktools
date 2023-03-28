@@ -10,13 +10,26 @@ var LinkModifierCollection = /** @class */ (function () {
     function LinkModifierCollection(modifiers) {
         /** Named modifier storage */
         this.modifiers = {};
-        if (modifiers) this.add(modifiers);
+        if (modifiers) this.register(modifiers);
     }
-    LinkModifierCollection.prototype.add = function (a, b) {
+    LinkModifierCollection.prototype.register = function (a, b) {
         var _this = this;
         switch (typeof a) {
             case 'string':
                 // name = a;
+                if (this.modifiers[a]) {
+                    this.modifiers[a] = function () {
+                        throw new Error(
+                            "\uB9C1\uD06C \uC218\uC815\uC790 '".concat(
+                                a,
+                                "'\uC774(\uAC00) \uC911\uBCF5\uC73C\uB85C \uB4F1\uB85D\uB418\uC5C8\uC2B5\uB2C8\uB2E4"
+                            )
+                        );
+                    };
+                    throw new TypeError(
+                        "Link modifier '".concat(a, "' is already defined")
+                    );
+                }
                 switch (typeof b) {
                     case 'function':
                         // Single modifier
@@ -46,7 +59,7 @@ var LinkModifierCollection = /** @class */ (function () {
                         case 'string':
                             //@ts-ignore Valid union overload
                             a.forEach(function (name) {
-                                return _this.add(name, b);
+                                return _this.register(name, b);
                             });
                             break;
                         default:
@@ -56,7 +69,7 @@ var LinkModifierCollection = /** @class */ (function () {
                     }
                 // Multiple modifiers
                 //@ts-ignore Valid union overload
-                else for (var name_1 in a) this.add(name_1, a[name_1]);
+                else for (var name_1 in a) this.register(name_1, a[name_1]);
                 break;
             default:
                 throw TypeError(
@@ -64,14 +77,14 @@ var LinkModifierCollection = /** @class */ (function () {
                 );
         }
     };
-    /**
-     * Unregister named link modifier
-     * @param name Name of link modifier
-     */
-    LinkModifierCollection.prototype.remove = function (name) {
-        if (name === 'string') delete this.modifiers[name];
-        else throw new TypeError('Name is not string');
-    };
+    // /**
+    //  * Unregister named link modifier
+    //  * @param name Name of link modifier
+    //  */
+    // remove(name: string): void {
+    //     if (name === 'string') delete this.modifiers[name];
+    //     else throw new TypeError('Name is not string');
+    // }
     /**
      * Mount the collection's modifiers to child elements which its modifiers are defined
      * @param element Target parent element
@@ -138,10 +151,18 @@ var LinkModifierCollection = /** @class */ (function () {
                         .then(function () {
                             return collection.modifiers[name](link, _this);
                         })
-                        .then(function () {
-                            _this.classList.remove('link-modifier-cloak');
-                            _this.classList.add('link-modified');
-                        });
+                        .then(
+                            function () {
+                                _this.classList.remove('link-modifier-cloak');
+                                _this.classList.add('link-modified');
+                            },
+                            function (error) {
+                                (0, common_1.printError)(
+                                    _this,
+                                    error.toString()
+                                );
+                            }
+                        );
                 });
             localPromises.push(localPromise);
         });

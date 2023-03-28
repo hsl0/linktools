@@ -11,19 +11,15 @@
         "newLine": "lf",
         "target": "ES5",
         "forceConsistentCasingInFileNames": true,
+        "declaration": true,
         "outDir": "dist",
+        "declarationDir": "types",
         "alwaysStrict": true,
         "sourceMap": true,
+        "declarationMap": true,
         "module": "CommonJS",
-        "declaration": true,
-        "lib": [
-            "DOM",
-            "ES2021"
-        ],
-        "rootDir": "src",
+        "lib": ["DOM", "ES2021"],
+        "rootDir": "src"
     },
-    "include": [
-        "src/**/*",
-        "node_modules/libertygame-types"
-    ]
+    "include": ["src/**/*", "node_modules/libertygame-types"]
 }

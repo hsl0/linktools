@@ -23,7 +23,7 @@ export default class LinkModifierCollection {
      * Add multiple named link modifier in once
      * @param modifiers Object of named link modifier. Key for modifier's name. Value for modifier function or name of alias.
      */
-    add(
+    register(
         modifiers:
             | Record<string, LinkModifier | string>
             | LinkModifierCollection
@@ -33,30 +33,25 @@ export default class LinkModifierCollection {
      * @param name Name of link modifier
      * @param modifier Link modifier function
      */
-    add(name: string, modifier: LinkModifier): void;
+    register(name: string, modifier: LinkModifier): void;
     /**
      * Add a named link modifier
      * @param names Names of link modifier
      * @param modifier Link modifier function
      */
-    add(names: string[] | Set<string>, modifier: LinkModifier): void;
+    register(names: string[] | Set<string>, modifier: LinkModifier): void;
     /**
      * Add a alias of named link modifier
      * @param alias Alias of link modifier
      * @param modifier Link modifier name
      */
-    add(alias: string, modifier: string): void;
+    register(alias: string, modifier: string): void;
     /**
      * Add aliases of named link modifier
      * @param aliases Aliases of link modifier
      * @param modifier Link modifier name
      */
-    add(aliases: string[] | Set<string>, modifier: string): void;
-    /**
-     * Unregister named link modifier
-     * @param name Name of link modifier
-     */
-    remove(name: string): void;
+    register(aliases: string[] | Set<string>, modifier: string): void;
     /**
      * Mount the collection's modifiers to child elements which its modifiers are defined
      * @param element Target parent element
@@ -79,3 +74,4 @@ export default class LinkModifierCollection {
     fork(): LinkModifierCollection;
 }
 export {};
+//# sourceMappingURL=linkmodifier.d.ts.map

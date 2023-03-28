@@ -14,3 +14,4 @@ export declare function createSelf(target: HTMLElements): void;
  * @param target Target element
  */
 export declare function createDummy(target: HTMLElements): void;
+//# sourceMappingURL=linkcreater.d.ts.map
