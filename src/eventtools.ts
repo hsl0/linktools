@@ -1,5 +1,37 @@
+/** TODO
+ *
+ * [V] 페이지 단위로 이벤트 위임
+ ** [ ] 페이지의 모든 이벤트와 인스턴스를 연결하고 통제하는 싱글턴 객체 만들기 (listening(?), delegating 프로퍼티)
+ * [-] event-*-cloak를 event-cloak와 event-strict 및 event-enforce로 분리
+ * [ ] MutationObserver를 사용해 변경사항 추적 (mutationObserver 프로퍼티)
+ * [ ] mount에서 verify(?) 분리
+ * [+] 기존 인스턴스를 확장한 인스턴스를 부모 인스턴스와 연결하고 액션 추가 반영
+ **     상속 개념
+ ** [+] 자식 인스턴스에 중복된 액션이 있다면 자식 인스턴스의 액션이 실행됨
+ ** [+] 자식 인스턴스의 액션은 부모 인스턴스의 액션을 실행할 수 있음
+ **     Action = (event, args, {instance: LinkActionCollection, super?: Action|null, })
+ * [ ] (장기) target별로 가능한 이벤트, 탐색 방식을 저장하는 객체 활용해 유연성 도모
+ * [ ] (장기) target을 state(class, attr 등)로도 선별 가능하도록 함
+ *
+ * [ ] 시작하지 않음
+ * [-] 진행중
+ * [V] 완료
+ * [X] 취소됨
+ * [?] 재검토중 (시작 전)
+ * [~] 재검토중 (시작 후)
+ * [/] 되돌리는 중
+ * [+] 추가 작업 검토중
+ */
+
 import { printError } from './common';
 import type { HTMLElements } from './common';
+
+interface ActionContext {
+    /** Caller instance */
+    instance: LinkActionCollection;
+    /** Action in super instance */
+    super?: Action | null;
+}
 
 /**
  * @callback Action
@@ -8,7 +40,8 @@ import type { HTMLElements } from './common';
  */
 type Action = (
     event: Event,
-    ...args: unknown[]
+    args: unknown[],
+    context: ActionContext
 ) => unknown | PromiseLike<unknown>;
 
 /**
@@ -102,6 +135,9 @@ export default class LinkActionCollection {
     /** Named actions storage */
     private actions: Record<string, Action> = {};
 
+    /** Super instance that actions are inherited from*/
+    readonly super: LinkActionCollection | null = null;
+
     // /** Alias selectors storage */
     // private aliases: [
     //     string | ((parent: JQuery<HTMLElement>) => HTMLElements),
@@ -117,10 +153,9 @@ export default class LinkActionCollection {
      * @param handlers Object of actions that are being added for collection. Key for action name.
      */
     constructor(handlers?: Record<string, Action> | LinkActionCollection) {
-        if (handlers) {
-            this.register(handlers);
-            // if (handlers instanceof LinkActionCollection) this.alias(handlers);
-        }
+        if (handlers instanceof LinkActionCollection) this.super = handlers;
+        else if (handlers) this.register(handlers);
+
         this.eventHandler = this.eventHandler.bind(this);
     }
 
@@ -175,11 +210,6 @@ export default class LinkActionCollection {
             case 'string':
                 // name = a
                 if (this.actions[a]) {
-                    this.actions[a] = () => {
-                        throw new Error(
-                            `동작 '${a}'이(가) 중복으로 등록되었습니다`
-                        );
-                    };
                     throw new TypeError(`Action '${a} is already defined'`);
                 }
                 switch (typeof b) {
@@ -189,8 +219,7 @@ export default class LinkActionCollection {
                         break;
                     case 'string':
                         // Single alias
-                        if (b in this.actions)
-                            this.actions[a] = this.actions[b];
+                        if (this.has(b)) this.actions[a] = this.actions[b];
                         else
                             throw new ReferenceError(
                                 `Action '${b}' is not exist`
@@ -392,83 +421,68 @@ export default class LinkActionCollection {
 
         if (!force && $parent.hasClass('event-mounted')) return;
 
-        $parent.find('.event-listener-cloak').addClass('event-listener');
-        $parent.find('.event-handler-cloak').addClass('event-handler');
-
         const collection = this;
+        const listening = new Set<string>();
 
-        $parent.find('.event-listener a, .event-handler a').each(function () {
-            const link = this;
-            const listening = new Set<string>();
+        $parent
+            .find('.event-listener a, .event-handler a')
+            .parents(
+                '.event-listener[data-target="link"], .event-handler[data-target="link"]'
+            )
+            .each(function () {
+                for (const key in this.dataset) {
+                    let type: string;
+                    let prefix: string;
 
-            $(this)
-                .parents(
-                    '.event-listener[data-target="link"], .event-handler[data-target="link"]'
-                )
-                .each(function () {
-                    for (const key in this.dataset) {
-                        let type: string;
-                        let prefix: string;
+                    // Test if the key has 'listen-' or 'handle-' prefix.
+                    if (/^listen[A-Z]/.test(key)) {
+                        type = stripCamelCasePrefix('listen', key);
+                        prefix = 'listen';
+                    } else if (/^handle[A-Z]/.test(key)) {
+                        type = stripCamelCasePrefix('handle', key);
+                        prefix = 'handle';
+                    } else continue;
 
-                        // Test if the key has 'listen-' or 'handle-' prefix.
-                        if (/^listen[A-Z]/.test(key)) {
-                            type = stripCamelCasePrefix('listen', key);
-                            prefix = 'listen';
-                        } else if (/^handle[A-Z]/.test(key)) {
-                            type = stripCamelCasePrefix('handle', key);
-                            prefix = 'handle';
-                        } else continue;
+                    if (!eventTypes[type]) continue;
 
-                        if (!eventTypes[type]) continue;
-
-                        if (
-                            this.classList.contains('.event-listener-cloak') ||
-                            this.classList.contains('.event-handler-cloak')
-                        )
-                            try {
-                                if (this.dataset[key] !== 'string')
-                                    throw new TypeError(
-                                        `[data-${prefix}-${type}] 속성이 비어있습니다`
-                                    );
-                                const { action } = parseEventDeclaration(
-                                    this.dataset[key]!
+                    if (this.classList.contains('.event-cloak'))
+                        try {
+                            if (this.dataset[key] !== 'string')
+                                throw new TypeError(
+                                    `[data-${prefix}-${type}] 속성이 비어있습니다`
                                 );
-                                if (!collection.actions[action])
-                                    throw new TypeError(
-                                        `동작 '${action}'은(는) 존재하지 않습니다`
-                                    );
-                            } catch (error) {
-                                printError(this, (error as Error).message);
-                                return;
-                            }
+                            const { action } = parseEventDeclaration(
+                                this.dataset[key]!
+                            );
+                            if (!collection.has(action))
+                                throw new TypeError(
+                                    `동작 '${action}'은(는) 존재하지 않습니다`
+                                );
+                        } catch (error) {
+                            printError(this, (error as Error).message);
+                            return;
+                        }
 
-                        listening.add(type);
-                    }
-                });
+                    listening.add(type);
+                }
+            });
 
-            listening.forEach((type) =>
-                // Already bound in constructor
-                // eslint-disable-next-line @typescript-eslint/unbound-method
-                link.addEventListener(type, collection.eventHandler)
+        listening.forEach((type) =>
+            // Already bound in constructor
+            // eslint-disable-next-line @typescript-eslint/unbound-method
+            document.addEventListener(type, collection.eventHandler)
+        );
+
+        $parent.find('.event-cloak:not([data-target])').each(function () {
+            printError(
+                this,
+                '[data-target] 속성에 이벤트 적용 대상이 지정되지 않았습니다'
             );
         });
 
-        $parent
-            .find(
-                '.event-listener-cloak:not([data-target]), .event-handler-cloak:not([data-target])'
-            )
-            .each(function () {
-                printError(
-                    this,
-                    '[data-target] 속성에 이벤트 적용 대상이 지정되지 않았습니다'
-                );
-            });
-
         $parent.addClass('event-mounted');
 
-        $parent
-            .find('.event-listener-cloak, .event-handler-cloak')
-            .removeClass(['event-listener-cloak', 'event-handler-cloak']);
+        $parent.find('.event-cloak').removeClass('event-cloak');
     }
 
     /**
@@ -484,11 +498,31 @@ export default class LinkActionCollection {
      * @param event Event object for control and view details
      * @param args Arguments that passed into the action
      */
-    execute(name: string, event: Event, ...args: unknown[]) {
-        return this.actions[name](event, ...args);
+    execute(
+        name: string,
+        event: Event,
+        ...args: unknown[]
+    ): unknown | PromiseLike<unknown> {
+        const action = this.actions[name];
+        if (action) {
+            const context: ActionContext = { instance: this };
+            if (this.super)
+                context.super = this.super.has(name)
+                    ? () => this.super!.execute(name, event, ...args)
+                    : null;
+            return action(event, args, context);
+        } else if (this.super?.has(name))
+            return this.super.execute(name, event, ...args);
+        else throw new ReferenceError(`Action '${name}' is not defined`);
+    }
+
+    has(name: string): boolean {
+        return Boolean(this.actions[name] || this.super?.has(name));
     }
 
     private eventHandler(event: Event) {
+        if (!$(event.target as HTMLElement).closest('a').length) return;
+
         const collection = this;
         const $handlers = $(event.target as HTMLElement).parents(
             '.event-handler'
