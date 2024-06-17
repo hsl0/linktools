@@ -15,7 +15,7 @@
     "license": "CC-BY-NC-SA-4.0",
     "devDependencies": {
         "@typescript-eslint/eslint-plugin": "^5.56.0",
-        "@typescript-eslint/parser": "^5.56.0",
+        "@typescript-eslint/parser": "^5.62.0",
         "eslint": "^8.36.0",
         "libertygame-types": "github:hsl0/libertygame-types#next",
         "prettier": "^2.8.6",
