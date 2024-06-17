@@ -18,7 +18,7 @@
         "@typescript-eslint/parser": "^5.56.0",
         "eslint": "^8.36.0",
         "libertygame-types": "github:hsl0/libertygame-types#next",
-        "prettier": "^2.8.6",
+        "prettier": "^3.3.2",
         "require-self": "^0.2.3",
         "typescript": "^5.0.2"
     }
