@@ -20,6 +20,6 @@
         "libertygame-types": "github:hsl0/libertygame-types#next",
         "prettier": "^2.8.6",
         "require-self": "^0.2.3",
-        "typescript": "^5.0.2"
+        "typescript": "^5.4.5"
     }
 }
